@@ -1,6 +1,9 @@
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 class Invoice {
     int invoiceId;
@@ -69,20 +72,18 @@ public class GSTCalculatorConcurrent {
         invoiceQueue.add(new Invoice(104, 10000, 5));
         invoiceQueue.add(new Invoice(105, 30000, 28));
 
-        Thread processor1 = new Thread(new InvoiceProcessor(invoiceQueue), "Processor-1");
-        Thread processor2 = new Thread(new InvoiceProcessor(invoiceQueue), "Processor-2");
+        int numProcessors = Runtime.getRuntime().availableProcessors();
+        ExecutorService executor = Executors.newFixedThreadPool(numProcessors);
 
-        processor1.start();
-        processor2.start();
+        for (int i = 0; i < numProcessors; i++) {
+            executor.submit(new InvoiceProcessor(invoiceQueue));
+        }
 
-        processor1.join();
-        processor2.join();
+        executor.shutdown();
+        while(!executor.awaitTermination(2, TimeUnit.SECONDS)){
+            System.out.println("Waiting for all tasks to finish...");
+        }
 
-        processor1.interrupt();
-        processor2.interrupt();
-
-        
-
-        System.out.println("All invoices processed.");
+        System.out.println("All invoices processed. Total processed: " + InvoiceProcessor.getProcessedCount());
     }
 }
